@@ -2,38 +2,75 @@ var http = require('http');
 var fs = require('fs');
 var request = require('request');
 
-// var mp = new MediaPress();
-// mp.upload('assets/1.psd', function(err, result) {
-//     mp.convert(result._id, {
-//             format: "jpg"
-//         },
-//         function(err, result) {
-//             mp.download(result.link, 'assets/1.jpg', function(err) {
-//                 console.log("DONE");
-//                 mp.info(result._id, function(err, media) {
-//                     console.log("INFO");
-//                     console.log(arguments);
-//                 });
-//             });
-//         });
-// });
-
 function MediaPress(options) {
     this.options = options || {};
-    this.mediaPressLink = this.options.mediaPressLink || "http://localhost:8080/api/";
+    this.mediaPressLink = this.options.mediaPressLink || "http://mediapress.io/api/";
     this.key = this.options.key || "demo";
+    this.uploadLink = null;
+    this.convertLink = null;
+    this.infoLink = null;
+    this.deleteLink = null;
 }
 
+MediaPress.prototype.getLinks = function(callback) {
+    var self = this;
+    request.get({
+        url: this.mediaPressLink
+    }, function optionalCallback(err, httpResponse, body) {
+        if (err) {
+            callback(err);
+        }
+        var links = JSON.parse(body);
+        self.uploadLink = links.uploadLink;
+        self.convertLink = links.convertLink;
+        self.infoLink = links.infoLink;
+        self.deleteLink = links.deleteLink;
+        callback(null);
+    });
+};
+
 MediaPress.prototype.getUploadLink = function(callback) {
-    callback(null, this.mediaPressLink + "upload");
+    var self = this;
+    if (self.uploadLink === null) {
+        this.getLinks(function() {
+            callback(null, self.uploadLink);
+        });
+    } else {
+        callback(null, self.uploadLink);
+    }
 };
 
 MediaPress.prototype.getConvertLink = function(mediaId, callback) {
-    callback(null, this.mediaPressLink + "convert/" + mediaId);
+    var self = this;
+    if (self.convertLink === null) {
+        this.getLinks(function() {
+            callback(null, self.convertLink.replace(":id", mediaId));
+        });
+    } else {
+        callback(null, self.convertLink.replace(":id", mediaId));
+    }
 };
 
 MediaPress.prototype.getInfoLink = function(mediaId, callback) {
-    callback(null, this.mediaPressLink + "info/" + mediaId);
+    var self = this;
+    if (self.infoLink === null) {
+        this.getLinks(function() {
+            callback(null, self.infoLink.replace(":id", mediaId));
+        });
+    } else {
+        callback(null, self.infoLink.replace(":id", mediaId));
+    }
+};
+
+MediaPress.prototype.getDeleteLink = function(mediaId, callback) {
+    var self = this;
+    if (self.deleteLink === null) {
+        this.getLinks(function() {
+            callback(null, self.deleteLink.replace(":id", mediaId));
+        });
+    } else {
+        callback(null, self.deleteLink.replace(":id", mediaId));
+    }
 };
 
 MediaPress.prototype.upload = function(filename, callback) {
