@@ -1,0 +1,29 @@
+{
+  "name": "mediapress",
+  "version": "0.1.0",
+  "description": "Media converter for node.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mediapressio/medipress.git"
+    },  
+  "keywords": [
+    "convert",
+    "media",
+    "video",
+    "photo",
+    "image",
+    "PSD",
+    "PDF",
+    "JPEG"
+  ],
+  "author": "Maksym Pomazan",
+  "license": "MIT",
+  "dependencies": {
+    "fs": "0.0.2",
+    "request": "^2.61.0"
+  }
+}
