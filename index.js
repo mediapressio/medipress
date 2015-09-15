@@ -2,89 +2,60 @@ var http = require('http');
 var fs = require('fs');
 var request = require('request');
 
-function MediaPress(options) {
-    this.options = options || {};
-    this.mediaPressLink = this.options.mediaPressLink || "http://mediapress.io/api/";
-    this.key = this.options.key || "demo";
-    this.uploadLink = null;
-    this.convertLink = null;
-    this.infoLink = null;
-    this.deleteLink = null;
+function MediaPress(settings) {
+    this.settings = settings || {};
+    this.settingsLoaded = false;
+    //Required settings
+    this.settings.apiLink = settings.apiLink || "http://mediapress.io/api/";
+    this.settings.key = settings.key || "demo";
 }
 
-MediaPress.prototype.getLinks = function(callback) {
+MediaPress.prototype.loadSettings = function(callback) {
     var self = this;
     request.get({
-        url: this.mediaPressLink
-    }, function optionalCallback(err, httpResponse, body) {
+        url: this.settings.apiLink
+    }, function(err, httpResponse, body) {
+        self.settingsLoaded = true;
         if (err) {
             callback(err);
+            return;
         }
-        var links = JSON.parse(body);
-        self.uploadLink = links.uploadLink;
-        self.convertLink = links.convertLink;
-        self.infoLink = links.infoLink;
-        self.deleteLink = links.deleteLink;
+        var settings = JSON.parse(body);
+        //Add remote settings;
+        for (var setting in settings) {
+            if (settings.hasOwnProperty(setting)) {
+                self.settings[setting] = self.settings[setting] || settings[setting];
+            }
+        }
         callback(null);
     });
 };
 
-MediaPress.prototype.getUploadLink = function(callback) {
+MediaPress.prototype.getSetting = function(setting, callback) {
     var self = this;
-    if (self.uploadLink === null) {
-        this.getLinks(function() {
-            callback(null, self.uploadLink);
+    if (!self.settingsLoaded) {
+        self.loadSettings(function(err) {
+            if (err) {
+                callback(err);
+                return;
+            }
+            self.getSetting(setting, callback);
         });
     } else {
-        callback(null, self.uploadLink);
-    }
-};
-
-MediaPress.prototype.getConvertLink = function(mediaId, callback) {
-    var self = this;
-    if (self.convertLink === null) {
-        this.getLinks(function() {
-            callback(null, self.convertLink.replace(":id", mediaId));
-        });
-    } else {
-        callback(null, self.convertLink.replace(":id", mediaId));
-    }
-};
-
-MediaPress.prototype.getInfoLink = function(mediaId, callback) {
-    var self = this;
-    if (self.infoLink === null) {
-        this.getLinks(function() {
-            callback(null, self.infoLink.replace(":id", mediaId));
-        });
-    } else {
-        callback(null, self.infoLink.replace(":id", mediaId));
-    }
-};
-
-MediaPress.prototype.getDeleteLink = function(mediaId, callback) {
-    var self = this;
-    if (self.deleteLink === null) {
-        this.getLinks(function() {
-            callback(null, self.deleteLink.replace(":id", mediaId));
-        });
-    } else {
-        callback(null, self.deleteLink.replace(":id", mediaId));
+        callback(null, self.settings[setting]);
     }
 };
 
 MediaPress.prototype.upload = function(filename, callback) {
     var self = this;
-    this.getUploadLink(function(err, link) {
-        var formData = {
-            key: self.key,
-            file: fs.createReadStream(filename),
-        };
-
+    this.getSetting("uploadLink", function(err, link) {
         request.post({
             url: link,
-            formData: formData
-        }, function optionalCallback(err, httpResponse, body) {
+            formData: {
+                key: self.settings.key,
+                file: fs.createReadStream(filename),
+            }
+        }, function(err, httpResponse, body) {
             if (err) {
                 callback(err);
             }
@@ -94,21 +65,22 @@ MediaPress.prototype.upload = function(filename, callback) {
     });
 };
 
-MediaPress.prototype.convert = function(mediaId, options, callback) {
+MediaPress.prototype.convert = function(mediaId, settings, callback) {
     var self = this;
-    this.getConvertLink(mediaId, function(err, link) {
-        var formData = {
-            key: self.key,
-            options: JSON.stringify(options),
-        };
-
+    this.getSetting("convertLink", function(err, link) {
+		console.log(link.replace(":id", mediaId));
         request.post({
-            url: link,
-            formData: formData
-        }, function optionalCallback(err, httpResponse, body) {
+            url: link.replace(":id", mediaId),
+            formData: {
+                key: self.settings.key,
+                settings: JSON.stringify(settings),
+            }
+        }, function(err, httpResponse, body) {
             if (err) {
                 callback(err);
+                return;
             }
+            console.log(body);
             callback(null, JSON.parse(body));
         });
 
@@ -126,9 +98,28 @@ MediaPress.prototype.download = function(url, saveto, callback) {
 };
 
 MediaPress.prototype.info = function(mediaId, callback) {
-    this.getInfoLink(mediaId, function(err, link) {
+    this.getSetting("infoLink", function(err, link) {
         request.get({
-            url: link
+            url: link.replace(":id", mediaId),
+            formData: {
+                key: self.settings.key
+            }
+        }, function optionalCallback(err, httpResponse, body) {
+            if (err) {
+                callback(err);
+            }
+            callback(null, JSON.parse(body));
+        });
+    });
+};
+
+MediaPress.prototype.delete = function(mediaId, callback) {
+    this.getSetting("deleteLink", function(err, link) {
+        request.delete({
+            url: link.replace(":id", mediaId),
+            formData: {
+                key: self.settings.key
+            }
         }, function optionalCallback(err, httpResponse, body) {
             if (err) {
                 callback(err);
