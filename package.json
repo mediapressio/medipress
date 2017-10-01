@@ -23,7 +23,6 @@
   "author": "Maksym Pomazan",
   "license": "MIT",
   "dependencies": {
-    "fs": "0.0.2",
     "request": "^2.61.0"
   }
 }
